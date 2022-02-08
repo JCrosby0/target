@@ -17,12 +17,14 @@ span {
   padding-right: 0.5rem;
 }
 .logo-cs {
-  position: absolute;
+  margin: auto auto 5px;
+  /* position: absolute;
   bottom: 5px;
-  right: 5px;
+  right: 5px; */
   cursor: pointer;
   display: flex;
   flex-direction: row;
+  justify-content: center;
   align-items: center;
   font-size: small;
   font-family: sans-serif;

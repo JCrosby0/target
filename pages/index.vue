@@ -5,86 +5,91 @@
       <button @click="toggleAbout">about</button>
       <button @click="toggleSolution">solution</button>
     </nav>
-    <h1>Target Puzzle</h1>
-    <!-- Rules -->
-    <div class="rules" v-if="showRules">
-      <p class="rules text">
-        There are {{ validWords.length }} 'common' words with four or more
-        letters that can be made from the letters of this nine letter word. All
-        words must contain the central letter.
-      </p>
-    </div>
-    <!-- Square Grid -->
-    <div :class="{ square: true, error: guessHasError }">
-      <div
-        v-for="(letter, index) in randomWordShuffled"
-        :key="'letter' + index"
-        :class="{ 'letter-box': true, used: guessUsesLetter[index] }"
-      >
-        <div class="letter">{{ letter }}</div>
+    <div class="main">
+      <h1>Target Puzzle</h1>
+      <!-- Rules -->
+      <div class="rules" v-if="showRules">
+        <p class="rules text">
+          There are {{ validWords.length }} 'common' words with four or more
+          letters that can be made from the letters of this nine letter word.
+          All words must contain the central letter.
+        </p>
       </div>
+      <!-- Square Grid -->
+      <div :class="{ square: true, error: guessHasError }">
+        <div
+          v-for="(letter, index) in randomWordShuffled"
+          :key="'letter' + index"
+          :class="{ 'letter-box': true, used: guessUsesLetter[index] }"
+        >
+          <div class="letter">{{ letter }}</div>
+        </div>
+      </div>
+      <!-- Input box -->
+      <div class="input">
+        <input
+          type="text"
+          id="theInput"
+          v-model="guess"
+          autocomplete="off"
+          autofocus
+          :style="{ background: inputColor, width: 'clamp(180px, 90%, 320px)' }"
+          placeholder="Begin Typing..."
+          @submit="checkInput"
+          @keyup.enter="checkInput"
+        />
+      </div>
+      <!-- solution space -->
+      <div class="solutions">
+        <h2>Words Found: {{ guessArray.length }} ({{ percentFound }}%)</h2>
+        <span
+          v-for="solution in guessArraySorted"
+          :key="solution"
+          :style="{
+            textTransform: solution.length === 9 ? 'uppercase' : 'lowercase',
+          }"
+        >
+          {{ solution }}
+        </span>
+        <h2>Other Words: {{ otherArray.length }}</h2>
+        <span
+          v-for="solution in otherArraySorted"
+          :key="solution"
+          :style="{
+            textTransform: solution.length === 9 ? 'uppercase' : 'lowercase',
+          }"
+        >
+          {{ solution }}
+        </span>
+      </div>
+      <!-- about -->
+      <div class="about" v-if="showAbout">
+        <p class="text">
+          The word list is from the 10,000 most common English words as
+          determined by n-gram frequency analysis of the Google's Trillion Word
+          Corpus.
+          <a
+            href="https://github.com/first20hours/google-10000-english"
+            target="_blank"
+            >Github Source</a
+          >. Other words are checked against a Scrabble wordlist.
+        </p>
+      </div>
+      <!-- solutions -->
+      <div class="solutions" v-if="showSolution">
+        <h2>Solutions:</h2>
+        <button @click="showAnswer = !showAnswer">Target Word</button><br />
+        <p v-if="showAnswer">
+          The word used to generate the puzzle is: {{ randomWord }}
+        </p>
+        <button @click="showWords = !showWords">Word List</button>
+        <p v-if="showWords">{{ validWordsSorted }}</p>
+      </div>
+      <button @click="newWord">New Word</button>
     </div>
-    <!-- Input box -->
-    <div class="input">
-      <input
-        type="text"
-        id="theInput"
-        v-model="guess"
-        autocomplete="off"
-        autofocus
-        :style="{ background: inputColor }"
-        placeholder="Begin Typing..."
-        @submit="checkInput"
-        @keyup.enter="checkInput"
-      />
+    <div class="footer relative">
+      <CrosbySolutions />
     </div>
-    <!-- solution space -->
-    <div class="solutions">
-      <h2>Words Found: {{ guessArray.length }} ({{ percentFound }}%)</h2>
-      <span
-        v-for="solution in guessArraySorted"
-        :key="solution"
-        :style="{
-          textTransform: solution.length === 9 ? 'uppercase' : 'lowercase',
-        }"
-      >
-        {{ solution }}
-      </span>
-      <h2>Other Words: {{ otherArray.length }}</h2>
-      <span
-        v-for="solution in otherArraySorted"
-        :key="solution"
-        :style="{
-          textTransform: solution.length === 9 ? 'uppercase' : 'lowercase',
-        }"
-      >
-        {{ solution }}
-      </span>
-    </div>
-    <!-- about -->
-    <div class="about" v-if="showAbout">
-      <p class="text">
-        The word list is from the 10,000 most common English words as determined
-        by n-gram frequency analysis of the Google's Trillion Word Corpus.
-        <a
-          href="https://github.com/first20hours/google-10000-english"
-          target="_blank"
-          >Github Source</a
-        >. Other words are checked against a Scrabble wordlist.
-      </p>
-    </div>
-    <!-- solutions -->
-    <div class="solutions" v-if="showSolution">
-      <h2>Solutions:</h2>
-      <button @click="showAnswer = !showAnswer">Target Word</button><br />
-      <p v-if="showAnswer">
-        The word used to generate the puzzle is: {{ randomWord }}
-      </p>
-      <button @click="showWords = !showWords">Word List</button>
-      <p v-if="showWords">{{ validWordsSorted }}</p>
-    </div>
-    <button @click="newWord">New Word</button>
-    <CrosbySolutions />
   </div>
 </template>
 
@@ -417,22 +422,32 @@ h1 {
 .rules {
   font-size: medium;
 }
+.container {
+  max-width: 320px;
+  margin: auto;
+  text-align: center;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 .nav {
   color: grey;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  flex: 0 0 initial;
 }
 .nav > button {
   border: 0;
 }
+.main {
+  flex: 1 1 100%;
+}
+.footer {
+  flex: 0 0 initial;
+}
 .about {
   font-size: small;
-}
-.container {
-  max-width: 320px;
-  margin: auto;
-  text-align: center;
 }
 .text {
   text-align: left;
@@ -447,7 +462,8 @@ button {
 #theInput {
   border: 2px grey solid;
   padding: 0.5rem 1rem;
-  margin: 1rem;
+  margin: auto;
+  width: clamp(180px, 90%, 320px);
 }
 .square {
   width: 180px;
