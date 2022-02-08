@@ -5,7 +5,7 @@
       <button @click="toggleAbout">about</button>
       <button @click="toggleSolution">solution</button>
     </nav>
-    <h1>Target puzzle:</h1>
+    <h1>Target Puzzle</h1>
     <!-- Rules -->
     <div class="rules" v-if="showRules">
       <p class="rules text">
@@ -84,12 +84,13 @@
       <p v-if="showWords">{{ validWordsSorted }}</p>
     </div>
     <button @click="newWord">New Word</button>
+    <CrosbySolutions />
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
-
+import CrosbySolutions from "@/components/crosby-solutions.vue";
 interface StatObject {
   longWordStreak: number;
   gotLongWord: boolean[];
@@ -125,6 +126,9 @@ export default Vue.extend({
       listNine,
       dictionary,
     };
+  },
+  components: {
+    CrosbySolutions,
   },
   data() {
     const message: string = "This is a message";
@@ -449,7 +453,7 @@ button {
   width: 180px;
   height: 180px;
   border: 2px grey solid;
-  margin: 2rem auto;
+  margin: 1rem auto;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
