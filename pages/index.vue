@@ -33,6 +33,7 @@
         autocomplete="off"
         autofocus
         :style="{ background: inputColor }"
+        placeholder="Begin Typing..."
         @submit="checkInput"
         @input="updateStyles"
         @keyup.enter="checkInput"
@@ -112,9 +113,17 @@ export default Vue.extend({
     const dictionary: string[] = scrabble
       .split("\n")
       .map((word) => word.toUpperCase());
+    /**
+     * filter the word list to nine-letter words
+     */
+    const listNine: Array<string> = wordlist.filter(
+      (word: string) => word.length === 9
+    );
+
     return {
-      wordlist: wordlist as string[],
-      dictionary: dictionary as string[],
+      wordlist,
+      listNine,
+      dictionary,
     };
   },
   data() {
@@ -126,6 +135,7 @@ export default Vue.extend({
     const showWords: boolean = false;
     const showSolution: boolean = false;
     const groupByLength: number[] = [4, 5, 6, 7, 8, 9];
+    const startTime: number = Date.now();
     return {
       message,
       length,
@@ -134,21 +144,39 @@ export default Vue.extend({
       showSolution,
       showAnswer,
       showWords,
+      startTime,
+      // from async
       wordlist: [] as string[],
       dictionary: [] as string[],
-      random: Math.random(),
+      listNine: [] as string[],
+      // user inputs, reset by newWord
+      random: 0 as number,
       guess: "" as string,
       guessArray: [] as string[],
+      guessHasError: false as boolean,
       otherArray: [] as string[],
       inputColor: "#efefef",
     };
   },
+  mounted() {
+    /**
+     * reset everything and start the timer, for consistant approach
+     */
+    this.newWord();
+  },
   methods: {
-    updateStyles(event: InputEvent): void {
-      const target = event.target as HTMLInputElement;
-      const inputLetter = event.data;
-      const inputWord = target.value;
-    },
+    /**
+     * is being handled by computed.
+     * left here for reference to hook into 9 letter success event?
+     */
+    // updateStyles(event: InputEvent): void {
+    //   const target = event.target as HTMLInputElement;
+    //   const inputLetter = event.data;
+    //   const inputWord = target.value;
+    // },
+    /**
+     * toggle app state
+     */
     toggleAbout(): void {
       this.showAbout = !this.showAbout;
     },
@@ -158,43 +186,69 @@ export default Vue.extend({
     toggleSolution(): void {
       this.showSolution = !this.showSolution;
     },
+    /**
+     * reset for new attempt
+     */
     newWord(): void {
-      this.random = Math.random();
+      // reset for new attempt
       this.guess = "";
       this.guessArray = [];
       this.guessHasError = false;
       this.otherArray = [];
+
+      // hide answers for new attempt
       this.showAnswer = false;
       this.showWords = false;
+
+      // generate new word
+      this.random = Math.random();
+
+      // start timer
+      this.startTime = Date.now();
     },
+    /**
+     * input validation
+     * fired on 'enter' key or input for submit
+     * checks if
+     * - word is in common word list,
+     * - else is in dictionary,
+     * - else doesn't exist
+     * applies styling for ux
+     * resets box for next input
+     */
     checkInput(): void {
       const word = this.guess.toUpperCase();
       // word exists in google common list
       if (this.validWords.includes(word) && !this.guessArray.includes(word)) {
         this.guessArray.push(word);
-        this.setInputColor("#8f8");
+        this.inputColor = "#8f8";
       }
       // word exists in scrabble dictionary
       else if (
         this.validDictionary.includes(word) &&
         !this.otherArray.includes(word)
       ) {
-        this.setInputColor("#ff8");
+        this.inputColor = "#ff8";
         this.otherArray.push(word);
       }
       // word doesn't exist
       else {
-        this.setInputColor("#f88");
+        this.inputColor = "#f88";
       }
-    },
-    setInputColor(color: string): void {
-      this.inputColor = color;
+      // reset input box for next attempt
       setTimeout(this.resetInput, 500);
     },
+    /**
+     * reset the input after a guess
+     * TODO: how to appropriately display the guess validation for a period of time and still capture subsequent input for the subsequent guess
+     */
     resetInput(): void {
       this.inputColor = "#efefef";
       this.guess = "";
     },
+    /**
+     * function to sort guess list by length then alphabetically
+     */
     sortLengthAlpha(a: string, b: string): number {
       if (a.length > b.length) return 1;
       if (a.length < b.length) return -1;
@@ -202,6 +256,13 @@ export default Vue.extend({
       if (a < b) return -1;
       return 0;
     },
+    /**
+     * guess validation
+     * 4+ letters
+     * must include middle letter
+     * all letters in the random word
+     * extra check for multiple letters
+     */
     wordFilter(word: string): boolean {
       // remove short words
       if (word.length < 4) return false;
@@ -212,19 +273,23 @@ export default Vue.extend({
         // if the letter is in the randomword
         if (this.randomWord.includes(letter)) {
           // check that we have enough letters in the random word
-          const noLetterInWord: number = [...word].filter(
+          const numberLettersInGuessWord: number = [...word].filter(
             (l: string) => l === letter
           ).length;
-          const noLetterInRandomWord: number = [...this.randomWord].filter(
+          const numberLettersInRandomWord: number = [...this.randomWord].filter(
             (l: string) => l === letter
           ).length;
-          if (noLetterInRandomWord >= noLetterInWord) return true;
+          if (numberLettersInRandomWord >= numberLettersInGuessWord)
+            return true;
         }
         return false;
       });
     },
   },
   computed: {
+    /**
+     * Logic to determine if the scrabled letter is included in the curret guess, for styling
+     */
     guessUsesLetter(): boolean[] {
       return this.randomWordShuffled.map((letter, index, array) => {
         return (
@@ -237,6 +302,9 @@ export default Vue.extend({
         );
       });
     },
+    /**
+     * logic to determine if the current guess has an error, for styling
+     */
     guessHasError(): boolean {
       const gUS = this.guess.toUpperCase().split("") as string[];
       return !gUS.every((letter) => {
@@ -247,6 +315,9 @@ export default Vue.extend({
         );
       });
     },
+    /**
+     * percent of the solution space that has been guessed
+     */
     percentFound(): number {
       const percent =
         100 *
@@ -254,41 +325,48 @@ export default Vue.extend({
           this.validWords.length);
       return +percent.toFixed(2);
     },
-    inputClass(): object {
-      return {
-        background: this.inputColor,
-      };
-    },
-    listNine(): Array<string> {
-      const result: Array<string> = this.wordlist.filter(
-        (word: string) => word.length === this.length
-      );
-      return result;
-    },
+    /**
+     * the target word
+     */
     randomWord(): string {
       const randIndex = Math.floor(this.random * this.listNine.length);
       return this.listNine[randIndex];
     },
+    /**
+     * the word as an array of letters in shuffled order
+     */
     randomWordShuffled(): Array<string> {
       return [...this.randomWord].sort(() => (Math.random() > 0.5 ? 1 : -1));
     },
+    /**
+     * the middle letter, required in all valid words
+     */
     middleLetter(): string {
       return this.randomWordShuffled[4];
     },
-    // filter the word list down to candidate words
-    // cull words in stages to minimize duplication of checks
+    /**
+     * apply the word filter to the wordlist
+     */
     validWords(): string[] {
       return this.wordlist.filter(this.wordFilter);
     },
+    /**
+     * apply the word filter to the dictionary
+     */
     validDictionary(): string[] {
       return this.dictionary.filter(this.wordFilter);
     },
+    /**
+     * sort the valid words for display
+     */
     validWordsSorted(): string[] {
       return [...this.validWords].sort(this.sortLengthAlpha);
     },
+    /** sort the guesses for display */
     guessArraySorted(): string[] {
       return [...this.guessArray].sort(this.sortLengthAlpha);
     },
+    /** sort the other words for display */
     otherArraySorted(): string[] {
       return [...this.otherArray].sort(this.sortLengthAlpha);
     },
