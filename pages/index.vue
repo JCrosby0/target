@@ -91,6 +91,7 @@
 import Vue from "vue";
 
 interface StatObject {
+  longWordStreak: number;
   gotLongWord: boolean[];
   gotPercent: boolean[];
   timeToLongWord: number[];
@@ -204,6 +205,9 @@ export default Vue.extend({
 
       // start timer
       this.startTime = Date.now();
+
+      // set focus on input
+      document.getElementById("theInput")?.focus();
     },
     /**
      * triggered when user guesses the 9 letter word
