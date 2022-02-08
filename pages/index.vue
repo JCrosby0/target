@@ -35,7 +35,6 @@
         :style="{ background: inputColor }"
         placeholder="Begin Typing..."
         @submit="checkInput"
-        @input="updateStyles"
         @keyup.enter="checkInput"
       />
     </div>
@@ -133,6 +132,7 @@ export default Vue.extend({
     const showAbout: boolean = false;
     const showAnswer: boolean = false;
     const showWords: boolean = false;
+    const showSuccess: boolean = false;
     const showSolution: boolean = false;
     const groupByLength: number[] = [4, 5, 6, 7, 8, 9];
     const startTime: number = Date.now();
@@ -141,6 +141,7 @@ export default Vue.extend({
       length,
       showRules,
       showAbout,
+      showSuccess,
       showSolution,
       showAnswer,
       showWords,
@@ -153,7 +154,6 @@ export default Vue.extend({
       random: 0 as number,
       guess: "" as string,
       guessArray: [] as string[],
-      guessHasError: false as boolean,
       otherArray: [] as string[],
       inputColor: "#efefef",
     };
@@ -193,7 +193,6 @@ export default Vue.extend({
       // reset for new attempt
       this.guess = "";
       this.guessArray = [];
-      this.guessHasError = false;
       this.otherArray = [];
 
       // hide answers for new attempt
@@ -205,6 +204,27 @@ export default Vue.extend({
 
       // start timer
       this.startTime = Date.now();
+    },
+    /**
+     * triggered when user guesses the 9 letter word
+     */
+    successRoutine(type: number): void {
+      // show feedback
+      this.showSuccess = true;
+      let message = "" as string;
+      if (type === 9) {
+        const nineElapsed = Date.now() - this.startTime;
+        message = `Congratulations! You found the word ${this.randomWord} in ${
+          nineElapsed / 1000
+        }s. Click 'OK' for a new word, or 'Cancel' to continue with the current word.`;
+      }
+      if (type === 100) {
+        const percentElapsed = Date.now() - this.startTime;
+        message = `Congratulations! You found all the words in ${
+          percentElapsed / 1000
+        }s. Click 'OK' for a new word.`;
+      }
+      window.confirm(message) && this.newWord();
     },
     /**
      * input validation
@@ -222,11 +242,19 @@ export default Vue.extend({
       if (this.validWords.includes(word) && !this.guessArray.includes(word)) {
         this.guessArray.push(word);
         this.inputColor = "#8f8";
+        // handle success cases
+        if (word === this.randomWord) {
+          this.successRoutine(9);
+        }
+        if (this.percentFound == 100) {
+          this.successRoutine(100);
+        }
       }
       // word exists in scrabble dictionary
       else if (
         this.validDictionary.includes(word) &&
-        !this.otherArray.includes(word)
+        !this.otherArray.includes(word) &&
+        !this.guessArray.includes(word)
       ) {
         this.inputColor = "#ff8";
         this.otherArray.push(word);
