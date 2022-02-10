@@ -21,6 +21,7 @@
           v-for="(letter, index) in randomWordShuffled"
           :key="'letter' + index"
           :class="{ 'letter-box': true, used: guessUsesLetter[index] }"
+          @click="clickLetter(letter, index)"
         >
           <div class="letter">{{ letter }}</div>
         </div>
@@ -38,6 +39,10 @@
           @submit="checkInput"
           @keyup.enter="checkInput"
         />
+        <button class="button tick" @click="checkInput">&#10003;</button>
+        <!--tick-->
+        <button class="button cross" @click="resetInput">&#10799;</button>
+        <!--cross-->
       </div>
       <!-- solution space -->
       <div class="solutions">
@@ -175,6 +180,20 @@ export default Vue.extend({
     this.newWord();
   },
   methods: {
+    clickLetter(letter: string, index: number) {
+      // if the letter square is active
+      if (this.guessUsesLetter[index]) {
+        // if it is the last letter in the guess, remove it
+        const length = this.guess.length;
+        if (length > 1 && this.guess.slice(length - 1) === letter) {
+          this.guess = this.guess.slice(0, length - 1);
+        }
+        // else do nothing
+        return;
+      }
+      // add clicked letter to the guess
+      this.guess = this.guess + letter;
+    },
     /**
      * is being handled by computed.
      * left here for reference to hook into 9 letter success event?
@@ -456,10 +475,18 @@ h1 {
 button {
   border: 1px grey solid;
   padding: 0.5rem 1rem;
-  margin-bottom: 0.25rem;
-  margin-right: 0.25rem;
+  /* margin-bottom: 0.25rem; */
+  margin-left: 0.25rem;
+}
+.input {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: none;
+  align-items: center;
+  justify-content: space-between;
 }
 #theInput {
+  flex: 1 1 initial;
   border: 2px grey solid;
   padding: 0.5rem 1rem;
   margin: auto;
@@ -474,7 +501,22 @@ button {
   flex-direction: row;
   flex-wrap: wrap;
 }
-
+.button {
+  flex: 0 0 intiial;
+  height: 100%;
+  width: 3rem;
+  font-size: normal;
+  border: 2px grey solid;
+  border-radius: 3px;
+}
+.tick {
+  background: #d3f8d3;
+  border-color: green;
+}
+.cross {
+  background: #ffd9c3;
+  border-color: red;
+}
 @keyframes shake {
   33% {
     transform: translateX(0.5rem);
