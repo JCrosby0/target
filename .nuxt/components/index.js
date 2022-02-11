@@ -1,3 +1,4 @@
+export { default as Success } from '../../components/Success.vue'
 export { default as Tutorial } from '../../components/Tutorial.vue'
 export { default as CrosbySolutions } from '../../components/crosby-solutions.vue'
 

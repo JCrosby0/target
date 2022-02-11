@@ -37,7 +37,7 @@
           :style="{ background: inputColor, width: 'clamp(180px, 90%, 320px)' }"
           placeholder="Begin Typing..."
           @submit="checkInput"
-          @keyup.enter="checkInput"
+          @keydown.enter.prevent="checkInput"
         />
         <button class="button tick" @click="checkInput">&#10003;</button>
         <!--tick-->
@@ -95,12 +95,25 @@
     <div class="footer relative">
       <CrosbySolutions />
     </div>
+    <div class="modal" v-if="showSuccess">
+      <Success
+        :word="randomWord"
+        :time="elapsedTime"
+        :streak="streak"
+        :fastest="fastest"
+        :total="totalWords"
+        :solved="totalSolved"
+        @newWord="newWord(true)"
+        @sameWord="hideSuccess"
+      />
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
 import CrosbySolutions from "@/components/crosby-solutions.vue";
+import Success from "@/components/Success.vue";
 interface StatObject {
   longWordStreak: number;
   gotLongWord: boolean[];
@@ -139,6 +152,7 @@ export default Vue.extend({
   },
   components: {
     CrosbySolutions,
+    Success,
   },
   data() {
     const message: string = "This is a message";
@@ -161,6 +175,12 @@ export default Vue.extend({
       showAnswer,
       showWords,
       startTime,
+      solved: false as boolean,
+      streak: 0 as number,
+      totalWords: 0 as number,
+      totalSolved: 0 as number,
+      fastest: null as number | null,
+      elapsedTime: "" as string | number | unknown,
       // from async
       wordlist: [] as string[],
       dictionary: [] as string[],
@@ -180,6 +200,10 @@ export default Vue.extend({
     this.newWord();
   },
   methods: {
+    hideSuccess(): void {
+      this.showSuccess = false;
+      document.getElementById("theInput")?.focus();
+    },
     clickLetter(letter: string, index: number) {
       // if the letter square is active
       if (this.guessUsesLetter[index]) {
@@ -219,7 +243,17 @@ export default Vue.extend({
      * reset for new attempt
      */
     newWord(): void {
+      // streak & stats
+      if (!this.solved) {
+        this.streak = 0; // will show as 1 when it is
+      }
+      this.totalWords++;
+
+      // hide success window if coming from there
+      this.hideSuccess();
+
       // reset for new attempt
+      this.solved = false;
       this.guess = "";
       this.guessArray = [];
       this.otherArray = [];
@@ -227,12 +261,14 @@ export default Vue.extend({
       // hide answers for new attempt
       this.showAnswer = false;
       this.showWords = false;
+      this.showSolution = false;
 
       // generate new word
       this.random = Math.random();
 
       // start timer
       this.startTime = Date.now();
+      this.elapsedTime = "";
 
       // set focus on input
       document.getElementById("theInput")?.focus();
@@ -245,10 +281,17 @@ export default Vue.extend({
       this.showSuccess = true;
       let message = "" as string;
       if (type === 9) {
+        // calculate time elapsed an store to top scope to pass to component
         const nineElapsed = Date.now() - this.startTime;
-        message = `Congratulations! You found the word ${this.randomWord} in ${
-          nineElapsed / 1000
-        }s. Click 'OK' for a new word, or 'Cancel' to continue with the current word.`;
+        this.elapsedTime = nineElapsed;
+        this.solved = true;
+        this.totalSolved++;
+        this.streak++;
+
+        // store fastest time
+        if (!(this.fastest && this.fastest < nineElapsed)) {
+          this.fastest = nineElapsed;
+        }
       }
       if (type === 100) {
         const percentElapsed = Date.now() - this.startTime;
@@ -256,7 +299,7 @@ export default Vue.extend({
           percentElapsed / 1000
         }s. Click 'OK' for a new word.`;
       }
-      window.confirm(message) && this.newWord();
+      document.getElementById("nextButton")?.focus();
     },
     /**
      * input validation
@@ -562,5 +605,12 @@ button {
 }
 .solutions {
   padding: 1rem;
+}
+.modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
 }
 </style>

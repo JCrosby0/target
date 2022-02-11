@@ -1,4 +1,7 @@
 {
+  "Success": {
+    "description": "Auto imported from components/Success.vue"
+  },
   "Tutorial": {
     "description": "Auto imported from components/Tutorial.vue"
   },
