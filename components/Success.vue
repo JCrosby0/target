@@ -8,13 +8,13 @@
       <div class="main">
         <p>
           You discovered the target word
-          <span class="highlight">{{ word }}</span> in {{ time / 1000 }}s.
+          <span class="highlight">{{ word }}</span> in {{ timeSeconds }}s.
         </p>
         <br />
-        <p>Your fastest discovery is {{ fastest / 1000 }}s.</p>
+        <p>Your fastest discovery is {{ fastestSeconds }}s.</p>
         <p>
           You have discovered {{ solved }} words out of {{ total }} attempts ({{
-            Number.parseFloat((solved / total) * 100).toFixed(1)
+            successPercent
           }}%)
         </p>
         <p>You're on a streak of {{ streak }} discoveries.</p>
@@ -49,14 +49,32 @@ export default Vue.extend({
     total: { required: true },
     solved: { required: true },
   },
-  mounted() {
+  mounted(): void {
     document.getElementById("nextButton")?.focus();
+    console.log("fastest:", this.fastest, typeof this.fastest);
+    console.log("time: ", this.time, typeof this.time);
+    console.log(
+      "successPercent: ",
+      this.successPercent,
+      typeof this.successPercent
+    );
+  },
+  computed: {
+    timeSeconds(): number {
+      return this.time / 1000;
+    },
+    fastestSeconds(): number {
+      return this.fastest / 1000;
+    },
+    successPercent(): string {
+      return ((this.solved / this.total) * 100).toFixed(1);
+    },
   },
   methods: {
-    nextWord() {
+    nextWord(): void {
       this.$emit("newWord");
     },
-    sameWord() {
+    sameWord(): void {
       this.$emit("sameWord");
     },
   },

@@ -20,7 +20,7 @@
         <div
           v-for="(letter, index) in randomWordShuffled"
           :key="'letter' + index"
-          :class="{ 'letter-box': true, used: guessUsesLetter[index] }"
+          :class="{ 'letter-box': true, used: usedLetters[index] }"
           @click="clickLetter(letter, index)"
         >
           <div class="letter">{{ letter }}</div>
@@ -103,7 +103,7 @@
         :fastest="fastest"
         :total="totalWords"
         :solved="totalSolved"
-        @newWord="newWord(true)"
+        @newWord="newWord"
         @sameWord="hideSuccess"
       />
     </div>
@@ -122,6 +122,57 @@ interface StatObject {
   timeToPercent: number[];
   timeTotal: number[];
 }
+
+interface HighlightObject {
+  letter: string;
+  letterCount: number;
+  index: number;
+  highlighted: boolean;
+}
+/**
+ * function to check if all elements of first array are in a second, when elements may repeat
+ * @param {string[]} source source to check against target
+ * @param {string[]} target target for source to be checked against
+ * @return {boolean}
+ */
+const allTheseAreInThat = function (
+  source: string[],
+  target: string[]
+): boolean {
+  if (source.length === 0) {
+    return true;
+  }
+  // check if a letter is not in target, before checking count of every letter
+  if (source.some((letter: string) => !target.includes(letter))) {
+    return false;
+  }
+  return source
+    .map((element: string, index: number, array: string[]) => {
+      // for every element in the source, find its count and the count of the element in the target.
+      const [sourceElementCount, targetElementCount] = [array, target].map(
+        (a: string[]) => a.filter((l: string) => l === element).length
+      );
+      return sourceElementCount <= targetElementCount;
+    })
+    .every((l: boolean) => l);
+};
+
+/**
+ * count how many times a letter is in an array of letters
+ */
+const countLetters = function (letter: string, letterArray: string[]): number {
+  return letterArray.filter((l: string) => l === letter).length;
+};
+/**
+ * function to sort guess list by length then alphabetically
+ */
+const sortLengthAlpha = function (a: string, b: string): number {
+  if (a.length > b.length) return 1;
+  if (a.length < b.length) return -1;
+  if (a > b) return 1;
+  if (a < b) return -1;
+  return 0;
+};
 
 export default Vue.extend({
   async asyncData() {
@@ -155,8 +206,6 @@ export default Vue.extend({
     Success,
   },
   data() {
-    const message: string = "This is a message";
-    const length: number = 9;
     const showRules: boolean = false;
     const showAbout: boolean = false;
     const showAnswer: boolean = false;
@@ -166,8 +215,6 @@ export default Vue.extend({
     const groupByLength: number[] = [4, 5, 6, 7, 8, 9];
     const startTime: number = Date.now();
     return {
-      message,
-      length,
       showRules,
       showAbout,
       showSuccess,
@@ -175,6 +222,8 @@ export default Vue.extend({
       showAnswer,
       showWords,
       startTime,
+      clickedIndex: null as number | null,
+      usedLetters: [] as boolean[],
       solved: false as boolean,
       streak: 0 as number,
       totalWords: 0 as number,
@@ -193,40 +242,63 @@ export default Vue.extend({
       inputColor: "#efefef",
     };
   },
-  mounted() {
+  mounted(): void {
     /**
-     * reset everything and start the timer, for consistant approach
+     * Use the 'new Word' method when page is loaded to ensure consistent approach
      */
     this.newWord();
   },
   methods: {
-    hideSuccess(): void {
-      this.showSuccess = false;
-      document.getElementById("theInput")?.focus();
-    },
-    clickLetter(letter: string, index: number) {
-      // if the letter square is active
-      if (this.guessUsesLetter[index]) {
-        // if it is the last letter in the guess, remove it
-        const length = this.guess.length;
-        if (length > 1 && this.guess.slice(length - 1) === letter) {
-          this.guess = this.guess.slice(0, length - 1);
-        }
-        // else do nothing
-        return;
+    returnFocus(): boolean {
+      if (document.activeElement !== document.getElementById("nextButton")) {
+        document.getElementById("theInput")?.focus();
       }
-      // add clicked letter to the guess
-      this.guess = this.guess + letter;
+      return false;
     },
-    /**
-     * is being handled by computed.
-     * left here for reference to hook into 9 letter success event?
-     */
-    // updateStyles(event: InputEvent): void {
-    //   const target = event.target as HTMLInputElement;
-    //   const inputLetter = event.data;
-    //   const inputWord = target.value;
-    // },
+    toggleHighlight(index: number): void {
+      // editing content of an array, ensure reactivity
+      Vue.set(this.usedLetters, index, !this.usedLetters[index]);
+    },
+    highlightLetter(letter: string, highlight: boolean): void {
+      // if the input was clicked, use that index, else find an index mathching letter and desired highlight change
+      const index =
+        this.clickedIndex ||
+        this.randomWordShuffled
+          // find an index that is not highlighted
+          .findIndex((l: string, i: number) => {
+            return l === letter && this.usedLetters[i] === !highlight;
+          });
+      // if we have an index, toggle the highlight
+      index >= 0 && this.toggleHighlight(index);
+      // finished with clickdIndex, set null ahead of next input
+      this.clickedIndex = null;
+    },
+    resetHighlight(): void {
+      this.usedLetters = Array(9).fill(false);
+    },
+    hideSuccess(): void {
+      let active = document.activeElement as HTMLElement;
+      active.blur();
+      this.showSuccess = false;
+      this.returnFocus();
+    },
+    clickLetter(letter: string, index: number): void {
+      // set the clicked index for highlight letter to pick the correct index
+      this.clickedIndex = index;
+      // allow the user to (re) click on the last letter in the guess to remove it from the guess
+      if (this.usedLetters[index]) {
+        // if the index clicked is highlighted
+        if (this.guess.slice(-1).toUpperCase() === letter.toUpperCase()) {
+          // remove the letter from guess
+          this.guess = this.guess.slice(0, -1);
+        }
+      } else {
+        // add clicked letter to the guess
+        this.guess = this.guess + letter;
+      }
+      // to prevent loss of focus
+      this.returnFocus();
+    },
     /**
      * toggle app state
      */
@@ -257,6 +329,7 @@ export default Vue.extend({
       this.guess = "";
       this.guessArray = [];
       this.otherArray = [];
+      this.resetHighlight();
 
       // hide answers for new attempt
       this.showAnswer = false;
@@ -271,33 +344,27 @@ export default Vue.extend({
       this.elapsedTime = "";
 
       // set focus on input
-      document.getElementById("theInput")?.focus();
+      this.returnFocus();
     },
     /**
      * triggered when user guesses the 9 letter word
      */
-    successRoutine(type: number): void {
+    successRoutine(type: number = 9): void {
       // show feedback
       this.showSuccess = true;
-      let message = "" as string;
       if (type === 9) {
-        // calculate time elapsed an store to top scope to pass to component
+        // calculate time elapsed and store to top scope to pass to component
         const nineElapsed = Date.now() - this.startTime;
-        this.elapsedTime = nineElapsed;
+        this.elapsedTime = +nineElapsed;
+        console.log("nineElapsed: ", nineElapsed);
         this.solved = true;
         this.totalSolved++;
         this.streak++;
 
         // store fastest time
-        if (!(this.fastest && this.fastest < nineElapsed)) {
+        if (this.fastest === null || nineElapsed < this.fastest) {
           this.fastest = nineElapsed;
         }
-      }
-      if (type === 100) {
-        const percentElapsed = Date.now() - this.startTime;
-        message = `Congratulations! You found all the words in ${
-          percentElapsed / 1000
-        }s. Click 'OK' for a new word.`;
       }
       document.getElementById("nextButton")?.focus();
     },
@@ -321,15 +388,15 @@ export default Vue.extend({
         if (word === this.randomWord) {
           this.successRoutine(9);
         }
-        if (this.percentFound == 100) {
-          this.successRoutine(100);
-        }
+        // if (this.percentFound == 100) {
+        //   this.successRoutine(100);
+        // }
       }
       // word exists in scrabble dictionary
       else if (
-        this.validDictionary.includes(word) &&
         !this.otherArray.includes(word) &&
-        !this.guessArray.includes(word)
+        !this.guessArray.includes(word) &&
+        this.validDictionary.includes(word)
       ) {
         this.inputColor = "#ff8";
         this.otherArray.push(word);
@@ -348,17 +415,10 @@ export default Vue.extend({
     resetInput(): void {
       this.inputColor = "#efefef";
       this.guess = "";
+      this.resetHighlight();
+      this.returnFocus();
     },
-    /**
-     * function to sort guess list by length then alphabetically
-     */
-    sortLengthAlpha(a: string, b: string): number {
-      if (a.length > b.length) return 1;
-      if (a.length < b.length) return -1;
-      if (a > b) return 1;
-      if (a < b) return -1;
-      return 0;
-    },
+
     /**
      * guess validation
      * 4+ letters
@@ -372,51 +432,29 @@ export default Vue.extend({
       // remove words that don't have the desired letter
       if (!word.includes(this.middleLetter)) return false;
       // check every letter in the word
-      return [...word].every((letter: string) => {
-        // if the letter is in the randomword
-        if (this.randomWord.includes(letter)) {
-          // check that we have enough letters in the random word
-          const numberLettersInGuessWord: number = [...word].filter(
-            (l: string) => l === letter
-          ).length;
-          const numberLettersInRandomWord: number = [...this.randomWord].filter(
-            (l: string) => l === letter
-          ).length;
-          if (numberLettersInRandomWord >= numberLettersInGuessWord)
-            return true;
-        }
-        return false;
-      });
+      return allTheseAreInThat([...word], this.randomWordShuffled);
+    },
+  },
+  watch: {
+    guess(n, o): void {
+      // check if letter was added or removed, and update highlight accordingly
+      const lastLetter = (o.length > n.length ? o : n).toUpperCase().slice(-1);
+      const highlightBool = n.length > o.length; // add highlight (else remove)
+      this.highlightLetter(lastLetter, highlightBool);
     },
   },
   computed: {
     /**
-     * Logic to determine if the scrabled letter is included in the curret guess, for styling
+     * returns uppercase of guess
      */
-    guessUsesLetter(): boolean[] {
-      return this.randomWordShuffled.map((letter, index, array) => {
-        return (
-          this.guess.toUpperCase().includes(letter) &&
-          array.slice(index).filter((l) => l === letter).length <=
-            this.guess
-              .toUpperCase()
-              .split("")
-              .filter((l) => l === letter).length
-        );
-      });
+    guessUCS(): string[] {
+      return this.guess.toUpperCase().split("");
     },
     /**
      * logic to determine if the current guess has an error, for styling
      */
     guessHasError(): boolean {
-      const gUS = this.guess.toUpperCase().split("") as string[];
-      return !gUS.every((letter) => {
-        return (
-          this.randomWord.includes(letter) && // word contains the letter
-          gUS.filter((l) => l === letter).length <= // word contains more of the letter than guess
-            this.randomWord.split("").filter((l) => l === letter).length
-        );
-      });
+      return !allTheseAreInThat(this.guessUCS, this.randomWordShuffled);
     },
     /**
      * percent of the solution space that has been guessed
@@ -438,7 +476,7 @@ export default Vue.extend({
     /**
      * the word as an array of letters in shuffled order
      */
-    randomWordShuffled(): Array<string> {
+    randomWordShuffled(): string[] {
       return [...this.randomWord].sort(() => (Math.random() > 0.5 ? 1 : -1));
     },
     /**
@@ -463,15 +501,15 @@ export default Vue.extend({
      * sort the valid words for display
      */
     validWordsSorted(): string[] {
-      return [...this.validWords].sort(this.sortLengthAlpha);
+      return [...this.validWords].sort(sortLengthAlpha);
     },
     /** sort the guesses for display */
     guessArraySorted(): string[] {
-      return [...this.guessArray].sort(this.sortLengthAlpha);
+      return [...this.guessArray].sort(sortLengthAlpha);
     },
     /** sort the other words for display */
     otherArraySorted(): string[] {
-      return [...this.otherArray].sort(this.sortLengthAlpha);
+      return [...this.otherArray].sort(sortLengthAlpha);
     },
   },
 });
@@ -589,6 +627,7 @@ button {
   margin: 0;
   font-size: x-large;
   position: absolute;
+  cursor: pointer;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -599,9 +638,13 @@ button {
 .letter-box:nth-of-type(5) {
   background: black;
   color: white;
+  font-weight: 700;
 }
 .letter-box:nth-of-type(4) + .used > .letter {
   color: yellow;
+}
+.letter-box:nth-of-type(4) + .used {
+  background: rgba(64, 64, 0, 1);
 }
 .solutions {
   padding: 1rem;
